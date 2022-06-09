@@ -1,37 +1,33 @@
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 const INFO_URL = "https://hk4e-api-os.mihoyo.com/event/sol/info?lang=en-us&act_id=e202102251931481";
-const SIGN_URL = "https://hk4e-api-os.mihoyo.com/event/sol/sign?lang=en-us&act_id=e202102251931481";
+const SIGN_URL = "https://hk4e-api-os.mihoyo.com/event/sol/sign?lang=en-us";
 const HOME_URL = "https://hk4e-api-os.mihoyo.com/event/sol/home?lang=en-us&act_id=e202102251931481";
 const REFERER_URL = "https://webstatic-sea.mihoyo.com/ys/event/signin-sea/index.html?act_id=e202102251931481";
-function checkin() {
+async function checkin(signInExecuted) {
     var _a, _b;
-    return __awaiter(this, void 0, void 0, function* () {
-        const info = yield fetch(INFO_URL)
-            .then(e => e.json())
-            .catch(e => console.log("error during fetch info", e));
-        const data = readMihoyoInfo(info);
-        if (data === null || data.first_bind) {
-            firstBind();
+    const info = await fetch(INFO_URL)
+        .then(e => e.json())
+        .catch(e => console.log("error during fetch info", e));
+    const data = readMihoyoInfo(info);
+    if (data === null || data.first_bind) {
+        firstBind();
+        return;
+    }
+    if (!data.is_sign) {
+        if (signInExecuted) {
+            console.error("sign in failed");
             return;
         }
-        if (!data.is_sign) {
-            doSignIn();
+        else {
+            await doSignIn();
+            return checkin(true);
         }
-        const home = yield fetch(HOME_URL)
-            .then(e => e.json())
-            .catch(e => console.log("error during fetch home", e));
-        const i = data.total_sign_day - 1;
-        const reward = (_b = (_a = home === null || home === void 0 ? void 0 : home.data) === null || _a === void 0 ? void 0 : _a.awards) === null || _b === void 0 ? void 0 : _b[i];
-        showReward(data, reward);
-    });
+    }
+    const home = await fetch(HOME_URL)
+        .then(e => e.json())
+        .catch(e => console.log("error during fetch home", e));
+    const i = data.total_sign_day - 1;
+    const reward = (_b = (_a = home === null || home === void 0 ? void 0 : home.data) === null || _a === void 0 ? void 0 : _a.awards) === null || _b === void 0 ? void 0 : _b[i];
+    showReward(data, reward);
 }
 function readMihoyoInfo(info) {
     if (info["retcode"] === -100) {
@@ -40,10 +36,31 @@ function readMihoyoInfo(info) {
     else if (info["retcode"] === 0) {
         return info["data"];
     }
-    throw new Error();
+    else {
+        console.error("unexpected ret code in readMihoyoInfo", info);
+    }
+    return null;
 }
-function doSignIn() {
-    //
+async function doSignIn() {
+    const options = {
+        method: "POST",
+        headers: {
+            "Content-type": "application/json;charset=UTF-8"
+        },
+        body: `{"act_id": "e202102251931481"}`
+    };
+    const result = await fetch(SIGN_URL, options)
+        .then(e => e.json())
+        .catch(e => console.log("error during fetch info", e));
+    if (result.retcode === 0) {
+        console.log("successfully checked in!");
+    }
+    else if (result.retcode === -5003) {
+        console.log(result.message);
+    }
+    else {
+        console.error("unexpected ret code from api in doSignIn", result);
+    }
 }
 function firstBind() {
     const result = document.getElementById("result");

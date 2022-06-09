@@ -1,9 +1,9 @@
 const INFO_URL = "https://hk4e-api-os.mihoyo.com/event/sol/info?lang=en-us&act_id=e202102251931481";
-const SIGN_URL = "https://hk4e-api-os.mihoyo.com/event/sol/sign?lang=en-us&act_id=e202102251931481";
+const SIGN_URL = "https://hk4e-api-os.mihoyo.com/event/sol/sign?lang=en-us";
 const HOME_URL = "https://hk4e-api-os.mihoyo.com/event/sol/home?lang=en-us&act_id=e202102251931481";
 const REFERER_URL = "https://webstatic-sea.mihoyo.com/ys/event/signin-sea/index.html?act_id=e202102251931481";
 
-async function checkin(){
+async function checkin(signInExecuted?:boolean){
 	const info:MihoyoInfo = await fetch(INFO_URL)
 		.then(e=>e.json())
 		.catch(e=>console.log("error during fetch info",e));
@@ -13,7 +13,14 @@ async function checkin(){
 		return;
 	}
 	if(!data.is_sign){
-		doSignIn();
+		if(signInExecuted){
+			console.error("sign in failed");
+			return;
+		}
+		else {
+			await doSignIn();
+			return checkin(true);
+		}
 	}
 	const home:MihoyoHome = await fetch(HOME_URL)
 		.then(e=>e.json())
@@ -22,18 +29,39 @@ async function checkin(){
 	const reward = home?.data?.awards?.[i];
 	showReward(data, reward);
 }
-function readMihoyoInfo(info:MihoyoInfo) {
+function readMihoyoInfo(info:MihoyoInfo):MihoyoCheckInData {
 	if(info["retcode"] === -100){
 		console.error(info["message"]);
 	}
 	else if(info["retcode"] === 0){
 		return info["data"];
 	}
-	throw new Error();
+	else{
+		console.error("unexpected ret code in readMihoyoInfo", info);
+	}
+	return null;
 }
 
-function doSignIn(){
-	//
+async function doSignIn(){
+	const options:RequestInit = {
+		method: "POST",
+		headers: {
+			"Content-type": "application/json;charset=UTF-8"
+		},
+		body: `{"act_id": "e202102251931481"}`
+	}
+	const result:CheckInResult = await fetch(SIGN_URL, options)
+		.then(e=>e.json())
+		.catch(e=>console.log("error during fetch info",e));
+	if(result.retcode === 0){
+		console.log("successfully checked in!");
+	}
+	else if(result.retcode === -5003){
+		console.log(result.message);
+	}
+	else {
+		console.error("unexpected ret code from api in doSignIn", result);
+	}
 }
 
 function firstBind(){
@@ -110,4 +138,14 @@ interface MihoyoReward{
 	icon:string;
 	name:string;
 	cnt:number;
+}
+
+interface CheckInResult {
+	"retcode": 0 | -5003;
+	"message": string;
+	"data": CheckInResultData;
+}
+
+interface CheckInResultData {
+	code: string;
 }
