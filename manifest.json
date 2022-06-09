@@ -4,17 +4,22 @@
 	"version": "1.0",
 	"description": "Daily check-in to Hoyolab.",
 	"icons": {
-		"48": "icons/i48a.png",
-		"64": "icons/i64a.png",
-		"128": "icons/i128a.png",
-		"256": "icons/i256a.png"
+		"16": "icons/16.png",
+		"32": "icons/32.png",
+		"48": "icons/48.png",
+		"64": "icons/64.png",
+		"128": "icons/128.png",
+		"256": "icons/256.png"
 	},
 	"background": {
 		"scripts": ["background.js"],
 		"persistent": true
 	},
 	"browser_action": {
-		"default_icon": "icons/i48a.png",
+		"default_icon": {
+			"16": "icons/16.png",
+			"32": "icons/32.png"
+		},
 		"default_title": "Genshin Check-In Helper",
 		"default_popup": "popup/popup.html"
 	},

@@ -4,6 +4,15 @@ const SIGN_URL = DEBUG ? "http://localhost:3000/sign" : "https://hk4e-api-os.mih
 const MINUTES = 60 * 1000;
 const HOURS = 60 * MINUTES;
 const DAYS = 24 * HOURS;
+const BrowserIcons = {
+    default: { path: { 16: "icons/16.png", 32: "icons/32.png" } },
+    succ: { path: { 16: "icons/succ-16.png", 32: "icons/succ-32.png" } },
+    fail: { path: { 16: "icons/fail-16.png", 32: "icons/fail-32.png" } },
+    load_0: { path: { 16: "icons/load-0-16.png", 32: "icons/load-0-32.png" } },
+    load_1: { path: { 16: "icons/load-1-16.png", 32: "icons/load-1-32.png" } },
+    load_2: { path: { 16: "icons/load-2-16.png", 32: "icons/load-2-32.png" } },
+    load_3: { path: { 16: "icons/load-3-16.png", 32: "icons/load-3-32.png" } },
+};
 let appStatus = {
     lastResult: null,
     lastRun: 0,
@@ -14,14 +23,14 @@ console.log("background script loaded", Date.now());
 browser.runtime.onStartup.addListener(onBrowserStart);
 browser.alarms.onAlarm.addListener(onAlarm);
 browser.runtime.onMessage.addListener(backgroundMessageHandler);
-checkin().then(updateStatus).catch(updateStatusError);
+run();
 function onBrowserStart() {
-    checkin().then(updateStatus).catch(updateStatusError);
+    run();
     console.log("browser start", Date.now());
 }
 function onAlarm(alarm) {
     if (alarm.name === "check-in-alarm") {
-        checkin().then(updateStatus).catch(updateStatusError);
+        run();
     }
     console.log("alarm activated", alarm.name, Date.now());
 }
@@ -30,7 +39,7 @@ function backgroundMessageHandler(message, sender) {
         case "get-status":
             return Promise.resolve(appStatus);
         case "manual-check-in":
-            return checkin().then(updateStatus).catch(updateStatusError);
+            return run();
         default:
             console.log("unhandled message in background", message, sender);
             break;
@@ -53,10 +62,44 @@ function setupNextAlarm() {
     browser.alarms.create("check-in-alarm", { when: nextTime });
     return nextTime;
 }
-async function checkin(signInExecuted) {
+async function loadingCycle() {
+    while (appStatus.lastResult === "incomplete") {
+        await loadingAnimation();
+    }
+}
+async function loadingAnimation() {
+    browser.browserAction.setIcon(BrowserIcons.load_0);
+    await new Promise(resolve => setTimeout(resolve, 500));
+    browser.browserAction.setIcon(BrowserIcons.load_1);
+    await new Promise(resolve => setTimeout(resolve, 500));
+    browser.browserAction.setIcon(BrowserIcons.load_2);
+    await new Promise(resolve => setTimeout(resolve, 500));
+    browser.browserAction.setIcon(BrowserIcons.load_3);
+    await new Promise(resolve => setTimeout(resolve, 500));
+}
+function updateIcon() {
+    var _a;
+    if (appStatus.lastResult === "error") {
+        browser.browserAction.setIcon(BrowserIcons.fail);
+    }
+    else if (appStatus.lastResult === "incomplete") {
+        throw new Error("updateIcon called while app status is still incomplete");
+    }
+    else if ((_a = appStatus.lastResult) === null || _a === void 0 ? void 0 : _a.result) {
+        browser.browserAction.setIcon(BrowserIcons.succ);
+    }
+    else {
+        browser.browserAction.setIcon(BrowserIcons.fail);
+    }
+}
+async function run() {
     appStatus.lastResult = "incomplete";
     appStatus.lastRun = Date.now();
     appStatus.nextRun = 0;
+    loadingCycle().then(updateIcon);
+    return checkin().then(updateStatus).catch(updateStatusError);
+}
+async function checkin(signInExecuted) {
     const info = await fetch(INFO_URL)
         .then(e => e.json())
         .catch(e => console.log("error during fetch info", e));
