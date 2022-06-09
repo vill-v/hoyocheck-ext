@@ -4,25 +4,27 @@
     <meta charset="UTF-8">
     <title>Title</title>
     <script src="popup.js" defer></script>
+    <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-<div id="fetch-action">
+<div id="checkin">
+    <div id="checkin-frame">
+        <img src="/icons/frame-active.png" class="frame">
+        <img id="reward-img" src="/icons/reward-fowl.png" class="reward-pic">
+        <img src="/icons/frame-claimed.png" class="checkmark">
+        <span id="reward-quantity">x3</span>
+        <span id="reward-day">Day 1</span>
+    </div>
+    <div id="info">
+        <div>Status:</div>
+        <div id="status">not ready</div>
+        <div>Previous check-in:</div>
+        <div id="prev-check-in">never</div>
+        <div>Next auto-check-in:</div>
+        <div id="next-check-in">not scheduled</div>
+    </div>
 </div>
 
-<div id="info">
-    <div>
-        <span>Status:</span>
-        <span id="status">not ready</span>
-    </div>
-    <div>
-        <span>Previous check-in:</span>
-        <span id="prev-check-in">never</span>
-    </div>
-    <div>
-        <span>Next scheduled check-in:</span>
-        <span id="next-check-in">not scheduled</span>
-    </div>
-</div>
 <div id="result">:3</div>
 </body>
 </html>

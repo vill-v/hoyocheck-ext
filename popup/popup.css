@@ -1,0 +1,66 @@
+body{
+    font-family:微软雅黑, Microsoft YaHei, Neuropolitical, sans-serif;
+}
+#checkin{
+    display: grid;
+    grid-template-columns: 100px auto;
+}
+#checkin-frame{
+    position: relative;
+    width: calc(272px/3);
+    height: calc(410px/3);
+    cursor: pointer;
+}
+.frame{
+    position: absolute;
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+}
+.reward-pic{
+    position: absolute;
+    z-index: 1;
+    width: 80px;
+    height: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    top: calc(44px/3);
+}
+.checkmark{
+    position: absolute;
+    z-index: 2;
+    width: 100%;
+    height: 100%;
+}
+#reward-quantity{
+    position: absolute;
+    z-index: 4;
+    bottom: 28px;
+    width: 100%;
+    overflow: hidden;
+    font-size: 14.6667px;
+    line-height: 16.8667px;
+    text-align: center;
+    color: white;
+}
+#reward-day{
+    position: absolute;
+    z-index: 4;
+    bottom: 5.33333px;
+    width: 100%;
+    overflow: hidden;
+    font-size: 13.3333px;
+    line-height: 15.3333px;
+    text-align: center;
+    color: #8f7d62;
+}
+#info{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr 1fr;
+    position: relative;
+}
+#info div{
+    text-align: center;
+    margin: auto;
+}

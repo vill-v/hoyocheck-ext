@@ -1,6 +1,17 @@
 const DEBUG = 1;
 const HOME_URL = DEBUG ? "http://localhost:3000/home" : "https://hk4e-api-os.mihoyo.com/event/sol/home?lang=en-us&act_id=e202102251931481";
 const REFERER_URL = "https://webstatic-sea.mihoyo.com/ys/event/signin-sea/index.html?act_id=e202102251931481";
+const ICON_LOOKUP = {
+    "Adventurer's Experience": "/icons/reward-adv.png",
+    "Bird Egg": "/icons/reward-egg.png",
+    "Fine Enhancement Ore": "/icons/reward-ore.png",
+    "Fish": "/icons/reward-fish.png",
+    "Fowl": "/icons/reward-fowl.png",
+    "Hero's Wit": "/icons/reward-hero.png",
+    "Mora": "/icons/reward-mora.png",
+    "Primogem": "/icons/reward-primo.png",
+    "Raw Meat": "/icons/reward-meat.png",
+};
 console.log("popup opened", Date.now());
 async function onPopupOpen() {
     const status = await sendMessage("get-status", null);
@@ -51,13 +62,14 @@ async function displayInfo(status) {
     }
 }
 async function getAndShowReward(data) {
-    var _a, _b;
+    var _a, _b, _c, _d;
     const home = await fetch(HOME_URL)
         .then(e => e.json())
         .catch(e => console.log("error during fetch home", e));
     const i = data.total_sign_day - 1;
     const reward = (_b = (_a = home === null || home === void 0 ? void 0 : home.data) === null || _a === void 0 ? void 0 : _a.awards) === null || _b === void 0 ? void 0 : _b[i];
-    showReward(data, reward);
+    const daysInMonth = (_d = (_c = home === null || home === void 0 ? void 0 : home.data) === null || _c === void 0 ? void 0 : _c.awards) === null || _d === void 0 ? void 0 : _d.length;
+    showReward(data, reward, daysInMonth);
 }
 function formatDate(timestamp) {
     return new Date(timestamp).toLocaleString();
@@ -87,35 +99,27 @@ function firstBind() {
     }
     result.append(container);
 }
-function showReward(data, reward) {
+function showReward(data, reward, daysInMonth) {
     const result = document.getElementById("result");
     const infoContainer = document.createElement("div");
-    const imgContainer = document.createElement("div");
     const checkInCount = document.createElement("div");
     // Mihoyo date, may be different from local time
-    // const today = document.createElement("div");
-    const rewardName = document.createElement("div");
-    const img = document.createElement("img");
-    checkInCount.textContent = "Total check-ins this month: " + data.total_sign_day;
-    // today.textContent = data.today;
-    // infoContainer.append(today);
+    const today = `Day ${data.today}`;
+    checkInCount.textContent = `Total check-ins this month: ${data.total_sign_day}/${daysInMonth}`;
     infoContainer.append(checkInCount);
-    rewardName.textContent = `Reward: ${reward.name} x${reward.cnt}`;
-    img.src = reward.icon;
-    img.style.width = "32px";
-    img.style.height = "32px";
-    imgContainer.append(rewardName);
-    imgContainer.append(img);
+    const img = document.getElementById("reward-img");
+    img.src = ICON_LOOKUP[reward.name];
+    document.getElementById("reward-quantity").textContent = `x${reward.cnt}`;
+    document.getElementById("reward-day").textContent = today;
     while (result.firstChild) {
         result.firstChild.remove();
     }
     result.append(infoContainer);
-    result.append(imgContainer);
 }
-document.getElementById("fetch-action").addEventListener("click", function () {
-    // browser.runtime.sendMessage({
-    // 	event: "manual-check-in",
-    // 	data: null
-    // });
+document.getElementById("checkin-frame").addEventListener("click", function () {
+    browser.runtime.sendMessage({
+        event: "manual-check-in",
+        data: null
+    });
 });
 onPopupOpen();
