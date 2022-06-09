@@ -12,7 +12,7 @@
 		"256": "icons/256.png"
 	},
 	"background": {
-		"scripts": ["background.js"],
+		"scripts": ["background.js", "node_modules/webextension-polyfill/dist/browser-polyfill.min.js"],
 		"persistent": true
 	},
 	"browser_action": {
