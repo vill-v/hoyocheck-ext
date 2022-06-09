@@ -39,7 +39,6 @@ function backgroundMessageHandler(message, sender) {
 }
 function updateStatus(checkinResult) {
     appStatus.lastResult = checkinResult;
-    appStatus.nextRun = checkinResult.nextRun;
     return appStatus;
 }
 function updateStatusError(err) {
@@ -67,7 +66,6 @@ async function checkin(signInExecuted) {
         return Promise.resolve({
             success: false,
             checkinAttempted: false,
-            nextRun: 0,
             result: null
         });
     }
@@ -77,7 +75,6 @@ async function checkin(signInExecuted) {
             return Promise.resolve({
                 success: false,
                 checkinAttempted: true,
-                nextRun: 0,
                 result: info
             });
         }
@@ -86,11 +83,10 @@ async function checkin(signInExecuted) {
             return checkin(true);
         }
     }
-    const next = setupNextAlarm();
+    appStatus.nextRun = setupNextAlarm();
     return Promise.resolve({
         success: data.is_sign,
         checkinAttempted: !!signInExecuted,
-        nextRun: next,
         result: info
     });
 }

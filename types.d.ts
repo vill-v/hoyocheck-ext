@@ -3,7 +3,6 @@ type InternalMessage = "get-status" | "manual-check-in";
 interface CheckInResult {
 	success: boolean;
 	checkinAttempted: boolean;
-	nextRun: number;
 	result: MihoyoInfo | null;
 }
 

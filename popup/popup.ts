@@ -1,6 +1,7 @@
 const DEBUG = 1;
 const HOME_URL = DEBUG ? "http://localhost:3000/home" : "https://hk4e-api-os.mihoyo.com/event/sol/home?lang=en-us&act_id=e202102251931481";
 const REFERER_URL = "https://webstatic-sea.mihoyo.com/ys/event/signin-sea/index.html?act_id=e202102251931481";
+console.log("popup opened", Date.now());
 
 async function onPopupOpen(){
 	const status:AppStatus = await sendMessage("get-status", null);
@@ -10,21 +11,9 @@ async function onPopupOpen(){
 	}
 	if(status.lastResult === null) {
 		console.error("no result to read");
-	} else if(status.lastResult === "error" || status.lastResult === "incomplete"){
-		console.error("background script not ready");
 	} else {
-		console.debug(status.lastResult);
-		const data = status.lastResult.result.data;
-		const home:MihoyoHome = await fetch(HOME_URL)
-			.then(e=>e.json())
-			.catch(e=>console.log("error during fetch home",e));
-		const i = data.total_sign_day -1;
-		const reward = home?.data?.awards?.[i];
-		if(status.lastResult.success){
-			showReward(data,reward);
-		} else {
-			firstBind();
-		}
+		console.debug(status);
+		await displayInfo(status);
 	}
 }
 
@@ -33,6 +22,55 @@ async function sendMessage(event:InternalMessage, data: any){
 		event: event,
 		data: data
 	});
+}
+
+async function displayInfo(status:AppStatus){
+	const statusMessage = document.getElementById("status");
+	const lastRun = document.getElementById("prev-check-in");
+	const nextRun = document.getElementById("next-check-in");
+	lastRun.innerHTML = formatDate(status.lastRun);
+	nextRun.innerHTML = formatCountdown(status.nextRun);
+	if(status.lastResult === "incomplete"){
+		statusMessage.innerHTML = "In progress...";
+	} else if(status.lastResult === "error") {
+		statusMessage.innerHTML = "Error";
+	} else {
+		if(status.lastResult.success){
+			if(status.lastResult.checkinAttempted){
+				statusMessage.innerHTML = "Successfully checked in!";
+			} else {
+				statusMessage.innerHTML = "Already checked in today...";
+			}
+			await getAndShowReward(status.lastResult.result.data);
+		} else {
+			statusMessage.innerHTML = "Check-in failed";
+			firstBind();
+		}
+	}
+}
+
+async function getAndShowReward(data:MihoyoCheckInData){
+	const home:MihoyoHome = await fetch(HOME_URL)
+		.then(e=>e.json())
+		.catch(e=>console.log("error during fetch home",e));
+	const i = data.total_sign_day -1;
+	const reward = home?.data?.awards?.[i];
+	showReward(data,reward);
+}
+
+function formatDate(timestamp: number) {
+	return new Date(timestamp).toLocaleString();
+}
+
+function formatCountdown(timestamp: number){
+	const diff = timestamp - Date.now();
+	if(diff <= 0){
+		return "in the past!";
+	}
+	const s = Math.trunc(diff/1000);
+	const m = Math.trunc(s/60);
+	const h = Math.trunc(m/60);
+	return `${h}h ${m % 60}m ${s % 60}s`;
 }
 
 function firstBind(){
@@ -56,18 +94,18 @@ function showReward(data:MihoyoCheckInData, reward:MihoyoReward){
 	const infoContainer = document.createElement("div");
 	const imgContainer = document.createElement("div");
 	const checkInCount = document.createElement("div");
-	const today = document.createElement("div");
-	const alreadyCheckedIn = document.createElement("div");
+	// Mihoyo date, may be different from local time
+	// const today = document.createElement("div");
 	const rewardName = document.createElement("div");
 	const img = document.createElement("img");
 	checkInCount.textContent = "Total check-ins this month: " + data.total_sign_day;
-	today.textContent = data.today;
-	alreadyCheckedIn.textContent = data.is_sign ? "Already checked in today..." : "Successfully checked in!";
-	infoContainer.append(today);
+	// today.textContent = data.today;
+	// infoContainer.append(today);
 	infoContainer.append(checkInCount);
-	infoContainer.append(alreadyCheckedIn);
-	rewardName.textContent = reward.name + " x" + reward.cnt;
+	rewardName.textContent = `Reward: ${reward.name} x${reward.cnt}`;
 	img.src = reward.icon;
+	img.style.width = "32px";
+	img.style.height = "32px";
 	imgContainer.append(rewardName);
 	imgContainer.append(img);
 	while(result.firstChild){
