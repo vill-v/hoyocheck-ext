@@ -7,7 +7,7 @@ const Debug = {
         const o = {};
         const k = `P-${Debug.session}-${Debug.i++}`;
         if (typeof data === "object") {
-            if (data && Object.prototype.hasOwnProperty.call(data, "stack")) {
+            if (data === null || data === void 0 ? void 0 : data.name) {
                 //assume error object
                 data = JSON.stringify(["err", data.name, data.message, data.stack]);
             }

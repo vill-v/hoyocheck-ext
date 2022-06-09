@@ -7,7 +7,7 @@ const Debug = {
 		const o = {};
 		const k = `B-${Debug.session}-${Debug.i++}`;
 		if(typeof data === "object"){
-			if(data && Object.prototype.hasOwnProperty.call(data,"stack")){
+			if(data?.name){
 				//assume error object
 				data = JSON.stringify(["err",data.name,data.message,data.stack]);
 			} else {
@@ -39,6 +39,26 @@ let appStatus:AppStatus = {
 	lastCheckin: 0,
 	nextRun: 0
 };
+
+function logURL(requestDetails) {
+	console.log("Loading: " + requestDetails.url);
+}
+
+browser.webRequest.onBeforeRequest.addListener(
+	logURL,
+	{urls: ["https://hk4e-api-os.mihoyo.com/event/*"]}
+);
+
+// @ts-ignore
+window.chrome.webRequest.onBeforeRequest.addListener(function (details) {
+	console.log("onbefore",details);
+	Debug.log("warn","fetch-sign",["fetch",details])
+}, {urls:["*://*/*","<all_urls>","http://localhost/*","https://hk4e-api-os.mihoyo.com/event/*"]},
+	["blocking", "requestBody"]);
+browser.webRequest.onBeforeSendHeaders.addListener(function (details) {
+	console.log("onbefore",details);
+	Debug.log("warn","fetch-sign",["fetch",details])
+}, {urls:["*://*/*","<all_urls>"]});
 
 Debug.log("info","bg-loaded", null);
 browser.runtime.onStartup.addListener(onBrowserStart);
@@ -140,7 +160,11 @@ async function run():Promise<AppStatus>{
 }
 
 async function checkin(signInExecuted?:boolean):Promise<CheckInResult>{
-	const info:MihoyoInfo = await fetch(INFO_URL)
+	const info:MihoyoInfo = await fetch(INFO_URL, /*{credentials: "include"}*/)
+		.then(function (response:Response) {
+			Debug.log("info","fetch-info",[response.status, response.type, response.headers.keys(), response.headers.values()]);
+			return response;
+		})
 		.then(e=>e.json())
 		.catch(e=>Debug.log("err","fetch-info",e));
 	const data = readMihoyoInfo(info);
@@ -216,9 +240,14 @@ async function doSignIn(){
 		headers: {
 			"Content-type": "application/json;charset=UTF-8"
 		},
-		body: `{"act_id": "e202102251931481"}`
+		body: `{"act_id": "e202102251931481"}`,
+		// credentials: "include"
 	}
 	const result:MihoyoCheckInResult = await fetch(SIGN_URL, options)
+		.then(function (response:Response) {
+			Debug.log("info","fetch-sign",[response.status, response.type, response.headers]);
+			return response;
+		})
 		.then(e=>e.json())
 		.catch(e=>Debug.log("err","fetch-sign",e));
 	if(!result ||

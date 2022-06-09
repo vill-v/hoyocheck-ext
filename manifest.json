@@ -27,6 +27,8 @@
 		"https://hk4e-api-os.mihoyo.com/event/*",
 		"http://localhost:3000/*",
 		"alarms",
-		"storage"
+		"storage",
+		"webRequest",
+		"webRequestBlocking"
 	]
 }
