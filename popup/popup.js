@@ -37,27 +37,40 @@ async function displayInfo(status) {
     const statusMessage = document.getElementById("status");
     const lastRun = document.getElementById("prev-check-in");
     const nextRun = document.getElementById("next-check-in");
+    statusMessage.className = "";
+    nextRun.className = "";
     lastRun.textContent = formatDate(status.lastRun);
     nextRun.textContent = formatCountdown(status.nextRun);
+    if (nextRun.textContent === "not scheduled") {
+        nextRun.classList.add("info-warn");
+    }
+    else if (nextRun.textContent === "in the past!") {
+        nextRun.classList.add("info-err");
+    }
     if (status.lastResult === "incomplete") {
         statusMessage.textContent = "In progress...";
+        statusMessage.className = "info-warn";
     }
     else if (status.lastResult === "error") {
         statusMessage.textContent = "Error";
+        statusMessage.className = "info-err";
         showReward(null, null, 0);
     }
     else {
         if (status.lastResult.success) {
             if (status.lastResult.checkinAttempted) {
                 statusMessage.textContent = "Successfully checked in!";
+                statusMessage.className = "info-succ";
             }
             else {
                 statusMessage.textContent = "Already checked in today...";
+                statusMessage.className = "";
             }
             await getAndShowReward(status.lastResult.result.data);
         }
         else {
             statusMessage.textContent = "Check-in failed";
+            statusMessage.className = "info-err";
             showReward(null, null, 0);
             firstBind();
         }
@@ -144,7 +157,7 @@ function rewardImgFrame(reward, day, claimed, loading) {
         frame.src = "/icons/frame-active.png";
         frame.classList.add("frame");
         const rewardDay = document.createElement("span");
-        rewardDay.textContent = `Loading...`;
+        rewardDay.textContent = `Checking in...`;
         rewardDay.classList.add("reward-day");
         container.append(frame);
         container.append(rewardDay);
@@ -184,7 +197,9 @@ function showReward(data, reward, daysInMonth) {
 }
 document.getElementById("checkin-frame").addEventListener("click", function () {
     rewardImgFrame(null, 0, false, true);
-    document.getElementById("status").textContent = "In progress...";
+    const statusBar = document.getElementById("status");
+    statusBar.textContent = "In progress...";
+    statusBar.className = "info-warn";
     Promise.all([
         browser.runtime.sendMessage({
             event: "manual-check-in",

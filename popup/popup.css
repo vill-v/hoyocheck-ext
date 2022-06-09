@@ -62,5 +62,17 @@ body{
 }
 #info div{
     text-align: center;
-    margin: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.info-succ{
+    background-color: yellowgreen;
+}
+.info-warn{
+    background-color: goldenrod;
+}
+.info-err{
+    background-color: firebrick;
+    color: azure;
 }
