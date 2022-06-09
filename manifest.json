@@ -9,6 +9,10 @@
 		"128": "icons/i128a.png",
 		"256": "icons/i256a.png"
 	},
+	"background": {
+		"scripts": ["background.js"],
+		"persistent": true
+	},
 	"browser_action": {
 		"default_icon": "icons/i48a.png",
 		"default_title": "Genshin Check-In Helper",

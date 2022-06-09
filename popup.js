@@ -1,66 +1,18 @@
-const INFO_URL = "https://hk4e-api-os.mihoyo.com/event/sol/info?lang=en-us&act_id=e202102251931481";
-const SIGN_URL = "https://hk4e-api-os.mihoyo.com/event/sol/sign?lang=en-us";
-const HOME_URL = "https://hk4e-api-os.mihoyo.com/event/sol/home?lang=en-us&act_id=e202102251931481";
 const REFERER_URL = "https://webstatic-sea.mihoyo.com/ys/event/signin-sea/index.html?act_id=e202102251931481";
-async function checkin(signInExecuted) {
-    var _a, _b;
-    const info = await fetch(INFO_URL)
-        .then(e => e.json())
-        .catch(e => console.log("error during fetch info", e));
-    const data = readMihoyoInfo(info);
-    if (data === null || data.first_bind) {
-        firstBind();
-        return;
+browser.runtime.onMessage.addListener(popupMessageHandler);
+function popupMessageHandler(message, sender) {
+    switch (message === null || message === void 0 ? void 0 : message.event) {
+        case "first-bind":
+            firstBind();
+            return Promise.resolve(true);
+        case "show-reward":
+            showReward(message.data.data, message.data.reward);
+            return Promise.resolve(true);
+        default:
+            console.log("unhandled message in popup", message, sender);
+            break;
     }
-    if (!data.is_sign) {
-        if (signInExecuted) {
-            console.error("sign in failed");
-            return;
-        }
-        else {
-            await doSignIn();
-            return checkin(true);
-        }
-    }
-    const home = await fetch(HOME_URL)
-        .then(e => e.json())
-        .catch(e => console.log("error during fetch home", e));
-    const i = data.total_sign_day - 1;
-    const reward = (_b = (_a = home === null || home === void 0 ? void 0 : home.data) === null || _a === void 0 ? void 0 : _a.awards) === null || _b === void 0 ? void 0 : _b[i];
-    showReward(data, reward);
-}
-function readMihoyoInfo(info) {
-    if (info["retcode"] === -100) {
-        console.error(info["message"]);
-    }
-    else if (info["retcode"] === 0) {
-        return info["data"];
-    }
-    else {
-        console.error("unexpected ret code in readMihoyoInfo", info);
-    }
-    return null;
-}
-async function doSignIn() {
-    const options = {
-        method: "POST",
-        headers: {
-            "Content-type": "application/json;charset=UTF-8"
-        },
-        body: `{"act_id": "e202102251931481"}`
-    };
-    const result = await fetch(SIGN_URL, options)
-        .then(e => e.json())
-        .catch(e => console.log("error during fetch info", e));
-    if (result.retcode === 0) {
-        console.log("successfully checked in!");
-    }
-    else if (result.retcode === -5003) {
-        console.log(result.message);
-    }
-    else {
-        console.error("unexpected ret code from api in doSignIn", result);
-    }
+    return false;
 }
 function firstBind() {
     const result = document.getElementById("result");
@@ -103,5 +55,8 @@ function showReward(data, reward) {
     result.append(imgContainer);
 }
 document.getElementById("fetch-action").addEventListener("click", function () {
-    checkin();
+    browser.runtime.sendMessage({
+        event: "manual-check-in",
+        data: null
+    });
 });
