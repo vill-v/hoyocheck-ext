@@ -19,6 +19,8 @@
 		"default_popup": "popup.html"
 	},
 	"permissions": [
-		"https://hk4e-api-os.mihoyo.com/event/*"
+		"https://hk4e-api-os.mihoyo.com/event/*",
+		"http://localhost:3000/*",
+		"alarms"
 	]
 }

@@ -1,6 +1,7 @@
-const INFO_URL = "https://hk4e-api-os.mihoyo.com/event/sol/info?lang=en-us&act_id=e202102251931481";
-const SIGN_URL = "https://hk4e-api-os.mihoyo.com/event/sol/sign?lang=en-us";
-const HOME_URL = "https://hk4e-api-os.mihoyo.com/event/sol/home?lang=en-us&act_id=e202102251931481";
+const DEBUG = 1;
+const INFO_URL = DEBUG ? "http://localhost:3000/info" : "https://hk4e-api-os.mihoyo.com/event/sol/info?lang=en-us&act_id=e202102251931481";
+const SIGN_URL = DEBUG ? "http://localhost:3000/sign" : "https://hk4e-api-os.mihoyo.com/event/sol/sign?lang=en-us";
+const HOME_URL = DEBUG ? "http://localhost:3000/home" : "https://hk4e-api-os.mihoyo.com/event/sol/home?lang=en-us&act_id=e202102251931481";
 const MINUTES = 60 * 1000;
 const HOURS = 60 * MINUTES;
 const DAYS = 24 * HOURS;
@@ -8,6 +9,7 @@ const DAYS = 24 * HOURS;
 browser.runtime.onStartup.addListener(onBrowserStart);
 browser.alarms.onAlarm.addListener(onAlarm);
 browser.runtime.onMessage.addListener(backgroundMessageHandler);
+checkin();
 
 function onBrowserStart(){
 	checkin();
@@ -43,7 +45,7 @@ function sendMessage(event:InternalMessages, data: any){
 function setupNextAlarm(){
 	const now = Date.now();
 	const randomOffset = Math.trunc(Math.random() * 10 * MINUTES - 5 * MINUTES);
-	const nextTime = now + DAYS + randomOffset;
+	const nextTime = DEBUG ? now + 0.5 * MINUTES: now + DAYS + randomOffset;
 	browser.alarms.create("check-in-alarm",{when:nextTime});
 }
 
