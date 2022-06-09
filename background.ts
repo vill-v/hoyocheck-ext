@@ -1,6 +1,25 @@
-const DEBUG = 1;
-const INFO_URL = DEBUG ? "http://localhost:3000/info" : "https://hk4e-api-os.mihoyo.com/event/sol/info?lang=en-us&act_id=e202102251931481";
-const SIGN_URL = DEBUG ? "http://localhost:3000/sign" : "https://hk4e-api-os.mihoyo.com/event/sol/sign?lang=en-us";
+const DEV = true;
+const Debug = {
+	session:Date.now(),
+	i:0,
+	log:function(level:BetaLogLevel,heading:BetaLogHeading,data:any){
+		const timestamp = Date.now();
+		const o = {};
+		const k = `B-${Debug.session}-${Debug.i++}`;
+		if(typeof data === "object"){
+			if(Object.prototype.hasOwnProperty.call(data,"stack")){
+				//assume error object
+				data = JSON.stringify(["err",data.name,data.message,data.stack]);
+			} else {
+				data = JSON.stringify(data);
+			}
+		}
+		o[k] = {t:timestamp,l:level,h:heading,d:data};
+		browser.storage.local.set(o);
+	}
+}
+const INFO_URL = DEV ? "http://localhost:3000/info" : "https://hk4e-api-os.mihoyo.com/event/sol/info?lang=en-us&act_id=e202102251931481";
+const SIGN_URL = DEV ? "http://localhost:3000/sign" : "https://hk4e-api-os.mihoyo.com/event/sol/sign?lang=en-us";
 const MINUTES = 60 * 1000;
 const HOURS = 60 * MINUTES;
 const DAYS = 24 * HOURS;
@@ -21,44 +40,47 @@ let appStatus:AppStatus = {
 	nextRun: 0
 };
 
-console.log("background script loaded", Date.now());
+Debug.log("info","bg-loaded", null);
 browser.runtime.onStartup.addListener(onBrowserStart);
 browser.alarms.onAlarm.addListener(onAlarm);
 browser.runtime.onMessage.addListener(backgroundMessageHandler);
 run();
 
 function onBrowserStart(){
+	Debug.log("info","browser-start", null);
 	run();
-	console.log("browser start", Date.now());
 }
 
 function onAlarm(alarm:browser.alarms.Alarm){
 	if(alarm.name === "check-in-alarm"){
+		Debug.log("info","alarm", alarm.name);
 		run();
 	}
-	console.log("alarm activated", alarm.name, Date.now());
+	Debug.log("warn","alarm", ["unhandled alarm",alarm.name]);
 }
 
 function backgroundMessageHandler(message, sender:browser.runtime.MessageSender){
+	Debug.log("info","bg-message", [message, sender]);
 	switch(message?.event as InternalMessage) {
 		case "get-status":
 			return Promise.resolve(appStatus);
 		case "manual-check-in":
 			return run();
 		default:
-			console.log("unhandled message in background", message, sender);
+			Debug.log("err","bg-message", ["unexpected message", message, sender]);
 			break;
 	}
 	return false;
 }
 
 function updateStatus(checkinResult:CheckInResult){
+	Debug.log("info","bg-status",checkinResult);
 	appStatus.lastResult = checkinResult;
 	return appStatus;
 }
 
 function updateStatusError(err){
-	console.error("checkin error",err);
+	Debug.log("err","bg-status",err);
 	appStatus.lastResult = "error";
 	return appStatus;
 }
@@ -66,7 +88,8 @@ function updateStatusError(err){
 function setupNextAlarm(){
 	const now = Date.now();
 	const randomOffset = Math.trunc(Math.random() * 10 * MINUTES - 5 * MINUTES);
-	const nextTime = DEBUG ? now + 0.5 * MINUTES: now + DAYS + randomOffset;
+	const nextTime = DEV ? now + 0.5 * MINUTES: now + DAYS + randomOffset;
+	Debug.log("info","alarm-set",nextTime);
 	browser.alarms.create("check-in-alarm",{when:nextTime});
 	return nextTime;
 }
@@ -112,17 +135,18 @@ async function run():Promise<AppStatus>{
 	appStatus.lastResult = "incomplete";
 	appStatus.lastRun = Date.now();
 	appStatus.nextRun = 0;
-	loadingCycle().then(updateIcon);
+	loadingCycle().then(updateIcon).catch(e=>Debug.log("err","icon",e));
 	return checkin().then(updateStatus).catch(updateStatusError);
 }
 
 async function checkin(signInExecuted?:boolean):Promise<CheckInResult>{
 	const info:MihoyoInfo = await fetch(INFO_URL)
 		.then(e=>e.json())
-		.catch(e=>console.log("error during fetch info",e));
+		.catch(e=>Debug.log("err","fetch-info",e));
 	const data = readMihoyoInfo(info);
 	if(data === null || data.first_bind){
 		// ask user to check in manually
+		Debug.log("warn","fetch-info",["checkin terminated early", data]);
 		return Promise.resolve({
 			success: false,
 			checkinAttempted: false,
@@ -131,7 +155,7 @@ async function checkin(signInExecuted?:boolean):Promise<CheckInResult>{
 	}
 	if(!data.is_sign) {
 		if(signInExecuted){
-			console.error("sign in failed");
+			Debug.log("err","checkin",["POST attempted but is_sign did not change", data]);
 			return Promise.resolve({
 				success: false,
 				checkinAttempted: true,
@@ -157,11 +181,12 @@ function readMihoyoInfo(info:MihoyoInfo):MihoyoCheckInData {
 		!Object.prototype.hasOwnProperty.call(info, "message") ||
 		!Object.prototype.hasOwnProperty.call(info, "data")
 	){
-		console.error("malformed MihoyoInfo object in readMihoyoInfo, fetch may have failed", info);
+		Debug.log("err","fetch-info",["malformed MihoyoInfo object", info]);
 		return null;
 	}
 	if(info.retcode === -100){
-		console.error(info["message"]);
+		Debug.log("err","fetch-info",["code -100 not logged in", info]);
+		return null;
 	}
 	else if(info.retcode === 0){
 		const data = info.data;
@@ -171,18 +196,19 @@ function readMihoyoInfo(info:MihoyoInfo):MihoyoCheckInData {
 			!Object.prototype.hasOwnProperty.call(data, "is_sign") ||
 			!Object.prototype.hasOwnProperty.call(data, "first_bind")
 		){
-			console.error("malformed MihoyoCheckInData object in readMihoyoInfo, fetch may have failed", data);
+			Debug.log("err","fetch-info",["malformed MihoyoCheckInData object", data]);
 			return null;
 		}
 		return data;
 	}
 	else{
-		console.error("unexpected ret code in readMihoyoInfo", info);
+		Debug.log("err","fetch-info",["unexpected ret code in readMihoyoInfo", info]);
 	}
 	return null;
 }
 
 async function doSignIn(){
+	Debug.log("info","fetch-sign","attempting POST request");
 	appStatus.lastCheckin = Date.now();
 
 	const options:RequestInit = {
@@ -194,22 +220,22 @@ async function doSignIn(){
 	}
 	const result:MihoyoCheckInResult = await fetch(SIGN_URL, options)
 		.then(e=>e.json())
-		.catch(e=>console.log("error during fetch info",e));
+		.catch(e=>Debug.log("err","fetch-sign",e));
 	if(!result ||
 		!Object.prototype.hasOwnProperty.call(result, "retcode") ||
 		!Object.prototype.hasOwnProperty.call(result, "message") ||
 		!Object.prototype.hasOwnProperty.call(result, "data")
 	){
-		console.error("malformed CheckInResult object in doSignIn, fetch may have failed", result);
+		Debug.log("err","fetch-sign",["malformed CheckInResult object", result]);
 		return;
 	}
 	if(result.retcode === 0){
-		console.log("successfully checked in!");
+		Debug.log("info","fetch-sign","successfully checked in!");
 	}
 	else if(result.retcode === -5003){
-		console.log(result.message);
+		Debug.log("info","fetch-sign","already checked in today (-5003)");
 	}
 	else {
-		console.error("unexpected ret code from api in doSignIn", result);
+		Debug.log("err","fetch-sign",["unexpected ret code in doSignIn", result]);
 	}
 }

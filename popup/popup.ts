@@ -1,5 +1,27 @@
-const DEBUG = 1;
-const HOME_URL = DEBUG ? "http://localhost:3000/home" : "https://hk4e-api-os.mihoyo.com/event/sol/home?lang=en-us&act_id=e202102251931481";
+const DEV = true;
+const Debug = {
+	session:Date.now(),
+	i:0,
+	log:function(level:BetaLogLevel,heading:BetaLogHeading,data:any){
+		const timestamp = Date.now();
+		const o = {};
+		const k = `P-${Debug.session}-${Debug.i++}`;
+		if(typeof data === "object"){
+			if(Object.prototype.hasOwnProperty.call(data,"stack")){
+				//assume error object
+				data = JSON.stringify(["err",data.name,data.message,data.stack]);
+			} else {
+				data = JSON.stringify(data);
+			}
+		}
+		o[k] = {t:timestamp,l:level,h:heading,d:data};
+		browser.storage.local.set(o);
+	},
+	report:async function(){
+		const all = await browser.storage.local.get(null);
+	}
+}
+const HOME_URL = DEV ? "http://localhost:3000/home" : "https://hk4e-api-os.mihoyo.com/event/sol/home?lang=en-us&act_id=e202102251931481";
 const REFERER_URL = "https://webstatic-sea.mihoyo.com/ys/event/signin-sea/index.html?act_id=e202102251931481";
 const ICON_LOOKUP = {
 	"Adventurer's Experience":"/icons/reward-adv.png",
@@ -13,19 +35,21 @@ const ICON_LOOKUP = {
 	"Raw Meat":"/icons/reward-meat.png",
 };
 
-console.log("popup opened", Date.now());
+Debug.log("info","popup-open", null);
 
 async function onPopupOpen(){
-	const status:AppStatus = await sendMessage("get-status", null);
+	const status:AppStatus = await sendMessage("get-status", null)
+		.catch(e=>Debug.log("err","popup-get-status",e));
 	if(!status){
-		console.error("communication with background script failed");
+		Debug.log("err","popup-get-status","communication with background script failed");
 		return;
 	}
 	if(status.lastResult === null) {
-		console.error("no result to read");
+		Debug.log("err","popup-get-status",["no result",status]);
 	} else {
-		console.debug(status);
-		await displayInfo(status);
+		Debug.log("info","popup-get-status",status);
+		await displayInfo(status)
+			.catch(e=>Debug.log("err","popup-get-status",e));
 	}
 }
 
@@ -49,6 +73,7 @@ async function displayInfo(status:AppStatus){
 	}
 	else if(nextRun.textContent === "in the past!"){
 		nextRun.classList.add("info-err");
+		Debug.log("err","popup-display-info",["Timer scheduled in past",status]);
 	}
 	if(status.lastResult === "incomplete"){
 		statusMessage.textContent = "In progress...";
@@ -56,6 +81,7 @@ async function displayInfo(status:AppStatus){
 	} else if(status.lastResult === "error") {
 		statusMessage.textContent = "Error";
 		statusMessage.className = "info-err";
+		Debug.log("err","popup-display-info",["Displaying err status",status]);
 		showReward(null,null,0);
 	} else {
 		if(status.lastResult.success){
@@ -66,11 +92,13 @@ async function displayInfo(status:AppStatus){
 				statusMessage.textContent = "Already checked in today...";
 				statusMessage.className = "";
 			}
-			await getAndShowReward(status.lastResult.result.data);
+			await getAndShowReward(status.lastResult.result.data)
+				.catch(e=>Debug.log("err","popup-display-info",e));
 		} else {
 			statusMessage.textContent = "Check-in failed";
 			statusMessage.className = "info-err";
 			showReward(null,null,0);
+			Debug.log("warn","popup-display-info",["Displaying check-in failed status",status]);
 			firstBind();
 		}
 	}
@@ -79,13 +107,13 @@ async function displayInfo(status:AppStatus){
 async function getAndShowReward(data:MihoyoCheckInData){
 	const home:MihoyoHome = await fetch(HOME_URL)
 		.then(e=>e.json())
-		.catch(e=>console.log("error during fetch home",e));
+		.catch(e=>Debug.log("err","fetch-home",e));
 	if(!home ||
 		!Object.prototype.hasOwnProperty.call(home, "data") ||
 		!Object.prototype.hasOwnProperty.call(home, "message") ||
 		!Object.prototype.hasOwnProperty.call(home, "retcode")
 	){
-		console.error("malformed MihoyoHome object in getAndShowReward, fetch may have failed", home);
+		Debug.log("err","fetch-home",["malformed MihoyoHome object", home]);
 		showReward(null,null,0);
 		return;
 	}
@@ -117,12 +145,15 @@ function firstBind(){
 	const result = document.getElementById("result");
 	const container = document.createElement("div");
 	const notice = document.createElement("div");
+	const notice2 = document.createElement("div");
 	const link = document.createElement("a");
 	notice.textContent = "You need to manually check in once before this tool can work.";
 	link.textContent = "Go to Check-In page";
 	link.href = REFERER_URL;
+	notice2.textContent = "After manually checking in, click the icon on the left side of this popup to restart the auto-check-in timer";
 	container.append(notice);
 	container.append(link);
+	container.append(notice2);
 	while(result.firstChild){
 		result.firstChild.remove();
 	}
@@ -194,9 +225,13 @@ function showReward(data:MihoyoCheckInData|null, reward:MihoyoReward|null, daysI
 		infoContainer.textContent = "Error: could not display check-in reward";
 	}
 	else {
-		rewardImgFrame(reward, data.total_sign_day, data.is_sign);
+		try{
+			rewardImgFrame(reward, data.total_sign_day, data.is_sign);
+		} catch(e) {
+			Debug.log("err","popup-show-reward",e);
+		}
 		const checkInCount = document.createElement("div");
-		checkInCount.textContent = `Total check-ins this month: ${data.total_sign_day}/${daysInMonth}`;
+		checkInCount.textContent = `Total check-ins this month: ${data?.total_sign_day}/${daysInMonth}`;
 		infoContainer.append(checkInCount);
 	}
 	result.append(infoContainer);
@@ -214,7 +249,7 @@ document.getElementById("checkin-frame").addEventListener("click",function (){
 		}),
 		new Promise(resolve => setTimeout(resolve,1000))
 	]).then(e => displayInfo(e[0]))
-		.catch(e => console.error("error sending manual check-in message",e));
+		.catch(e => Debug.log("err","manual-check-in",e));
 })
 
 onPopupOpen();

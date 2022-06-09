@@ -1,4 +1,9 @@
 type InternalMessage = "get-status" | "manual-check-in";
+type BetaLogLevel = "info"|"warn"|"err";
+type BetaLogHeading = "popup-open"|"popup-get-status"|"popup-display-info"|"popup-show-reward"|
+	"manual-check-in"|"bg-loaded"|"bg-message"|"bg-status"|"browser-start"|
+	"alarm"|"alarm-set"|"icon"|
+	"fetch-home"|"fetch-info"|"fetch-sign"|"checkin";
 
 interface CheckInResult {
 	success: boolean;
