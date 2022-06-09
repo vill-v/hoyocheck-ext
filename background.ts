@@ -78,25 +78,33 @@ async function loadingCycle(){
 }
 
 async function loadingAnimation(){
-	browser.browserAction.setIcon(BrowserIcons.load_0);
-	await new Promise(resolve => setTimeout(resolve,500));
-	browser.browserAction.setIcon(BrowserIcons.load_1);
-	await new Promise(resolve => setTimeout(resolve,500));
-	browser.browserAction.setIcon(BrowserIcons.load_2);
-	await new Promise(resolve => setTimeout(resolve,500));
-	browser.browserAction.setIcon(BrowserIcons.load_3);
-	await new Promise(resolve => setTimeout(resolve,500));
+	await Promise.all([
+		browser.browserAction.setIcon(BrowserIcons.load_0),
+		new Promise(resolve => setTimeout(resolve,500))
+	]);
+	await Promise.all([
+		browser.browserAction.setIcon(BrowserIcons.load_1),
+		new Promise(resolve => setTimeout(resolve,500))
+	]);
+	await Promise.all([
+		browser.browserAction.setIcon(BrowserIcons.load_2),
+		new Promise(resolve => setTimeout(resolve,500))
+	]);
+	await Promise.all([
+		browser.browserAction.setIcon(BrowserIcons.load_3),
+		new Promise(resolve => setTimeout(resolve,500))
+	]);
 }
 
-function updateIcon(){
+async function updateIcon(){
 	if(appStatus.lastResult === "error") {
-		browser.browserAction.setIcon(BrowserIcons.fail);
+		await browser.browserAction.setIcon(BrowserIcons.fail);
 	} else if(appStatus.lastResult === "incomplete"){
 		throw new Error("updateIcon called while app status is still incomplete");
 	} else if(appStatus.lastResult?.result){
-		browser.browserAction.setIcon(BrowserIcons.succ);
+		await browser.browserAction.setIcon(BrowserIcons.succ);
 	} else {
-		browser.browserAction.setIcon(BrowserIcons.fail);
+		await browser.browserAction.setIcon(BrowserIcons.fail);
 	}
 }
 
@@ -144,11 +152,29 @@ async function checkin(signInExecuted?:boolean):Promise<CheckInResult>{
 }
 
 function readMihoyoInfo(info:MihoyoInfo):MihoyoCheckInData {
-	if(info["retcode"] === -100){
+	if(!info ||
+		!Object.prototype.hasOwnProperty.call(info, "retcode") ||
+		!Object.prototype.hasOwnProperty.call(info, "message") ||
+		!Object.prototype.hasOwnProperty.call(info, "data")
+	){
+		console.error("malformed MihoyoInfo object in readMihoyoInfo, fetch may have failed", info);
+		return null;
+	}
+	if(info.retcode === -100){
 		console.error(info["message"]);
 	}
-	else if(info["retcode"] === 0){
-		return info["data"];
+	else if(info.retcode === 0){
+		const data = info.data;
+		if(!data ||
+			!Object.prototype.hasOwnProperty.call(data, "total_sign_day") ||
+			!Object.prototype.hasOwnProperty.call(data, "today") ||
+			!Object.prototype.hasOwnProperty.call(data, "is_sign") ||
+			!Object.prototype.hasOwnProperty.call(data, "first_bind")
+		){
+			console.error("malformed MihoyoCheckInData object in readMihoyoInfo, fetch may have failed", data);
+			return null;
+		}
+		return data;
 	}
 	else{
 		console.error("unexpected ret code in readMihoyoInfo", info);
@@ -169,6 +195,14 @@ async function doSignIn(){
 	const result:MihoyoCheckInResult = await fetch(SIGN_URL, options)
 		.then(e=>e.json())
 		.catch(e=>console.log("error during fetch info",e));
+	if(!result ||
+		!Object.prototype.hasOwnProperty.call(result, "retcode") ||
+		!Object.prototype.hasOwnProperty.call(result, "message") ||
+		!Object.prototype.hasOwnProperty.call(result, "data")
+	){
+		console.error("malformed CheckInResult object in doSignIn, fetch may have failed", result);
+		return;
+	}
 	if(result.retcode === 0){
 		console.log("successfully checked in!");
 	}

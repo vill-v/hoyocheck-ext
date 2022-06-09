@@ -37,26 +37,28 @@ async function displayInfo(status) {
     const statusMessage = document.getElementById("status");
     const lastRun = document.getElementById("prev-check-in");
     const nextRun = document.getElementById("next-check-in");
-    lastRun.innerHTML = formatDate(status.lastRun);
-    nextRun.innerHTML = formatCountdown(status.nextRun);
+    lastRun.textContent = formatDate(status.lastRun);
+    nextRun.textContent = formatCountdown(status.nextRun);
     if (status.lastResult === "incomplete") {
-        statusMessage.innerHTML = "In progress...";
+        statusMessage.textContent = "In progress...";
     }
     else if (status.lastResult === "error") {
-        statusMessage.innerHTML = "Error";
+        statusMessage.textContent = "Error";
+        showReward(null, null, 0);
     }
     else {
         if (status.lastResult.success) {
             if (status.lastResult.checkinAttempted) {
-                statusMessage.innerHTML = "Successfully checked in!";
+                statusMessage.textContent = "Successfully checked in!";
             }
             else {
-                statusMessage.innerHTML = "Already checked in today...";
+                statusMessage.textContent = "Already checked in today...";
             }
             await getAndShowReward(status.lastResult.result.data);
         }
         else {
-            statusMessage.innerHTML = "Check-in failed";
+            statusMessage.textContent = "Check-in failed";
+            showReward(null, null, 0);
             firstBind();
         }
     }
@@ -66,6 +68,14 @@ async function getAndShowReward(data) {
     const home = await fetch(HOME_URL)
         .then(e => e.json())
         .catch(e => console.log("error during fetch home", e));
+    if (!home ||
+        !Object.prototype.hasOwnProperty.call(home, "data") ||
+        !Object.prototype.hasOwnProperty.call(home, "message") ||
+        !Object.prototype.hasOwnProperty.call(home, "retcode")) {
+        console.error("malformed MihoyoHome object in getAndShowReward, fetch may have failed", home);
+        showReward(null, null, 0);
+        return;
+    }
     const i = data.total_sign_day - 1;
     const reward = (_b = (_a = home === null || home === void 0 ? void 0 : home.data) === null || _a === void 0 ? void 0 : _a.awards) === null || _b === void 0 ? void 0 : _b[i];
     const daysInMonth = (_d = (_c = home === null || home === void 0 ? void 0 : home.data) === null || _c === void 0 ? void 0 : _c.awards) === null || _d === void 0 ? void 0 : _d.length;
@@ -75,6 +85,9 @@ function formatDate(timestamp) {
     return new Date(timestamp).toLocaleString();
 }
 function formatCountdown(timestamp) {
+    if (timestamp === 0) {
+        return "not scheduled";
+    }
     const diff = timestamp - Date.now();
     if (diff <= 0) {
         return "in the past!";
@@ -106,7 +119,7 @@ function rewardImgFrame(reward, day, claimed, loading) {
     }
     if (reward) {
         const frame = document.createElement("img");
-        frame.src = claimed ? "/icons/frame-claimed.png" : "/icons/frame-active.png";
+        frame.src = claimed ? "/icons/frame-inactive.png" : "/icons/frame-active.png";
         frame.classList.add("frame");
         const rewardPic = document.createElement("img");
         rewardPic.src = ICON_LOOKUP[reward.name];
@@ -153,21 +166,32 @@ function rewardImgFrame(reward, day, claimed, loading) {
 }
 function showReward(data, reward, daysInMonth) {
     const result = document.getElementById("result");
-    const infoContainer = document.createElement("div");
-    const checkInCount = document.createElement("div");
-    rewardImgFrame(reward, data.total_sign_day, data.is_sign);
-    checkInCount.textContent = `Total check-ins this month: ${data.total_sign_day}/${daysInMonth}`;
-    infoContainer.append(checkInCount);
     while (result.firstChild) {
         result.firstChild.remove();
+    }
+    const infoContainer = document.createElement("div");
+    if (!data || !reward) {
+        rewardImgFrame(null, 0, false);
+        infoContainer.textContent = "Error: could not display check-in reward";
+    }
+    else {
+        rewardImgFrame(reward, data.total_sign_day, data.is_sign);
+        const checkInCount = document.createElement("div");
+        checkInCount.textContent = `Total check-ins this month: ${data.total_sign_day}/${daysInMonth}`;
+        infoContainer.append(checkInCount);
     }
     result.append(infoContainer);
 }
 document.getElementById("checkin-frame").addEventListener("click", function () {
     rewardImgFrame(null, 0, false, true);
-    browser.runtime.sendMessage({
-        event: "manual-check-in",
-        data: null
-    });
+    document.getElementById("status").textContent = "In progress...";
+    Promise.all([
+        browser.runtime.sendMessage({
+            event: "manual-check-in",
+            data: null
+        }),
+        new Promise(resolve => setTimeout(resolve, 1000))
+    ]).then(e => displayInfo(e[0]))
+        .catch(e => console.error("error sending manual check-in message", e));
 });
 onPopupOpen();
