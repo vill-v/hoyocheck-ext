@@ -1,19 +1,38 @@
+const DEBUG = 1;
+const HOME_URL = DEBUG ? "http://localhost:3000/home" : "https://hk4e-api-os.mihoyo.com/event/sol/home?lang=en-us&act_id=e202102251931481";
 const REFERER_URL = "https://webstatic-sea.mihoyo.com/ys/event/signin-sea/index.html?act_id=e202102251931481";
 
-browser.runtime.onMessage.addListener(popupMessageHandler);
-function popupMessageHandler(message, sender:browser.runtime.MessageSender){
-	switch(message?.event as InternalMessages) {
-		case "first-bind":
-			firstBind();
-			return Promise.resolve(true);
-		case "show-reward":
-			showReward(message.data.data,message.data.reward);
-			return Promise.resolve(true);
-		default:
-			console.log("unhandled message in popup", message, sender);
-			break;
+async function onPopupOpen(){
+	const status:AppStatus = await sendMessage("get-status", null);
+	if(!status){
+		console.error("communication with background script failed");
+		return;
 	}
-	return false;
+	if(status.lastResult === null) {
+		console.error("no result to read");
+	} else if(status.lastResult === "error" || status.lastResult === "incomplete"){
+		console.error("background script not ready");
+	} else {
+		console.debug(status.lastResult);
+		const data = status.lastResult.result.data;
+		const home:MihoyoHome = await fetch(HOME_URL)
+			.then(e=>e.json())
+			.catch(e=>console.log("error during fetch home",e));
+		const i = data.total_sign_day -1;
+		const reward = home?.data?.awards?.[i];
+		if(status.lastResult.success){
+			showReward(data,reward);
+		} else {
+			firstBind();
+		}
+	}
+}
+
+async function sendMessage(event:InternalMessage, data: any){
+	return browser.runtime.sendMessage({
+		event: event,
+		data: data
+	});
 }
 
 function firstBind(){
@@ -59,8 +78,10 @@ function showReward(data:MihoyoCheckInData, reward:MihoyoReward){
 }
 
 document.getElementById("fetch-action").addEventListener("click",function (){
-	browser.runtime.sendMessage({
-		event: "manual-check-in",
-		data: null
-	});
+	// browser.runtime.sendMessage({
+	// 	event: "manual-check-in",
+	// 	data: null
+	// });
 })
+
+onPopupOpen();

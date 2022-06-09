@@ -1,4 +1,18 @@
-type InternalMessages = "first-bind" | "show-reward" | "manual-check-in";
+type InternalMessage = "get-status" | "manual-check-in";
+
+interface CheckInResult {
+	success: boolean;
+	checkinAttempted: boolean;
+	nextRun: number;
+	result: MihoyoInfo | null;
+}
+
+interface AppStatus{
+	lastResult: CheckInResult | "error" | "incomplete" | null;
+	lastRun: number;
+	lastCheckin: number;
+	nextRun: number;
+}
 
 interface MihoyoInfo{
 	data: null | MihoyoCheckInData;
@@ -30,12 +44,12 @@ interface MihoyoReward{
 	cnt:number;
 }
 
-interface CheckInResult {
+interface MihoyoCheckInResult {
 	"retcode": 0 | -5003;
 	"message": string;
-	"data": CheckInResultData;
+	"data": MihoyoCheckInResultData;
 }
 
-interface CheckInResultData {
+interface MihoyoCheckInResultData {
 	code: string;
 }
