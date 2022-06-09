@@ -99,24 +99,72 @@ function firstBind() {
     }
     result.append(container);
 }
+function rewardImgFrame(reward, day, claimed, loading) {
+    const container = document.getElementById("checkin-frame");
+    while (container.firstChild) {
+        container.firstChild.remove();
+    }
+    if (reward) {
+        const frame = document.createElement("img");
+        frame.src = claimed ? "/icons/frame-claimed.png" : "/icons/frame-active.png";
+        frame.classList.add("frame");
+        const rewardPic = document.createElement("img");
+        rewardPic.src = ICON_LOOKUP[reward.name];
+        rewardPic.classList.add("reward-pic");
+        const checkmark = document.createElement("img");
+        checkmark.src = "/icons/frame-claimed.png";
+        checkmark.classList.add("checkmark");
+        const quantity = document.createElement("span");
+        quantity.textContent = `x${reward.cnt}`;
+        quantity.classList.add("reward-quantity");
+        const rewardDay = document.createElement("span");
+        rewardDay.textContent = `Day ${day}`;
+        rewardDay.classList.add("reward-day");
+        container.append(frame);
+        container.append(rewardPic);
+        container.append(checkmark);
+        container.append(quantity);
+        container.append(rewardDay);
+    }
+    else if (loading) {
+        const frame = document.createElement("img");
+        frame.src = "/icons/frame-active.png";
+        frame.classList.add("frame");
+        const rewardDay = document.createElement("span");
+        rewardDay.textContent = `Loading...`;
+        rewardDay.classList.add("reward-day");
+        container.append(frame);
+        container.append(rewardDay);
+    }
+    else {
+        const frame = document.createElement("img");
+        frame.src = "/icons/frame-active.png";
+        frame.classList.add("frame");
+        const rewardPic = document.createElement("img");
+        rewardPic.src = "/icons/fail-32.png";
+        rewardPic.classList.add("reward-pic");
+        const rewardDay = document.createElement("span");
+        rewardDay.textContent = `Error`;
+        rewardDay.classList.add("reward-day");
+        container.append(frame);
+        container.append(rewardPic);
+        container.append(rewardDay);
+    }
+}
 function showReward(data, reward, daysInMonth) {
     const result = document.getElementById("result");
     const infoContainer = document.createElement("div");
     const checkInCount = document.createElement("div");
-    // Mihoyo date, may be different from local time
-    const today = `Day ${data.today}`;
+    rewardImgFrame(reward, data.total_sign_day, data.is_sign);
     checkInCount.textContent = `Total check-ins this month: ${data.total_sign_day}/${daysInMonth}`;
     infoContainer.append(checkInCount);
-    const img = document.getElementById("reward-img");
-    img.src = ICON_LOOKUP[reward.name];
-    document.getElementById("reward-quantity").textContent = `x${reward.cnt}`;
-    document.getElementById("reward-day").textContent = today;
     while (result.firstChild) {
         result.firstChild.remove();
     }
     result.append(infoContainer);
 }
 document.getElementById("checkin-frame").addEventListener("click", function () {
+    rewardImgFrame(null, 0, false, true);
     browser.runtime.sendMessage({
         event: "manual-check-in",
         data: null
