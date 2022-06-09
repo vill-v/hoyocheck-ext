@@ -7,7 +7,7 @@ const Debug = {
         const o = {};
         const k = `P-${Debug.session}-${Debug.i++}`;
         if (typeof data === "object") {
-            if (Object.prototype.hasOwnProperty.call(data, "stack")) {
+            if (data && Object.prototype.hasOwnProperty.call(data, "stack")) {
                 //assume error object
                 data = JSON.stringify(["err", data.name, data.message, data.stack]);
             }
@@ -20,6 +20,7 @@ const Debug = {
     },
     report: async function () {
         const all = await browser.storage.local.get(null);
+        return `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(all))}`;
     }
 };
 const HOME_URL = DEV ? "http://localhost:3000/home" : "https://hk4e-api-os.mihoyo.com/event/sol/home?lang=en-us&act_id=e202102251931481";
@@ -37,6 +38,31 @@ const ICON_LOOKUP = {
 };
 Debug.log("info", "popup-open", null);
 async function onPopupOpen() {
+    document.getElementById("checkin-frame").addEventListener("click", function () {
+        rewardImgFrame(null, 0, false, true);
+        const statusBar = document.getElementById("status");
+        statusBar.textContent = "In progress...";
+        statusBar.className = "info-warn";
+        Promise.all([
+            browser.runtime.sendMessage({
+                event: "manual-check-in",
+                data: null
+            }),
+            new Promise(resolve => setTimeout(resolve, 1000))
+        ]).then(e => displayInfo(e[0]))
+            .catch(e => Debug.log("err", "manual-check-in", e));
+    });
+    document.getElementById("beta-report").addEventListener("click", function () {
+        this.textContent = "Creating report";
+        Debug.report().then(function (dataURL) {
+            const link = document.createElement("a");
+            link.textContent = "download";
+            link.href = dataURL;
+            link.download = "genshin-check-in-extension-log.json";
+            document.getElementById("beta").append(link);
+            link.click();
+        });
+    });
     const status = await sendMessage("get-status", null)
         .catch(e => Debug.log("err", "popup-get-status", e));
     if (!status) {
@@ -232,18 +258,4 @@ function showReward(data, reward, daysInMonth) {
     }
     result.append(infoContainer);
 }
-document.getElementById("checkin-frame").addEventListener("click", function () {
-    rewardImgFrame(null, 0, false, true);
-    const statusBar = document.getElementById("status");
-    statusBar.textContent = "In progress...";
-    statusBar.className = "info-warn";
-    Promise.all([
-        browser.runtime.sendMessage({
-            event: "manual-check-in",
-            data: null
-        }),
-        new Promise(resolve => setTimeout(resolve, 1000))
-    ]).then(e => displayInfo(e[0]))
-        .catch(e => Debug.log("err", "manual-check-in", e));
-});
 onPopupOpen();

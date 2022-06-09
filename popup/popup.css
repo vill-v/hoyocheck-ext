@@ -1,5 +1,6 @@
 body{
     font-family:微软雅黑, Microsoft YaHei, Neuropolitical, sans-serif;
+    max-width: 500px;
 }
 #checkin{
     display: grid;
@@ -75,4 +76,11 @@ body{
 .info-err{
     background-color: firebrick;
     color: azure;
+}
+#beta{
+    background-color: dimgray;
+}
+#beta-report{
+    color: blue;
+    cursor: pointer;
 }

@@ -7,7 +7,7 @@ const Debug = {
 		const o = {};
 		const k = `B-${Debug.session}-${Debug.i++}`;
 		if(typeof data === "object"){
-			if(Object.prototype.hasOwnProperty.call(data,"stack")){
+			if(data && Object.prototype.hasOwnProperty.call(data,"stack")){
 				//assume error object
 				data = JSON.stringify(["err",data.name,data.message,data.stack]);
 			} else {
@@ -60,7 +60,7 @@ function onAlarm(alarm:browser.alarms.Alarm){
 }
 
 function backgroundMessageHandler(message, sender:browser.runtime.MessageSender){
-	Debug.log("info","bg-message", [message, sender]);
+	Debug.log("info","bg-message", message);
 	switch(message?.event as InternalMessage) {
 		case "get-status":
 			return Promise.resolve(appStatus);

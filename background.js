@@ -7,7 +7,7 @@ const Debug = {
         const o = {};
         const k = `B-${Debug.session}-${Debug.i++}`;
         if (typeof data === "object") {
-            if (Object.prototype.hasOwnProperty.call(data, "stack")) {
+            if (data && Object.prototype.hasOwnProperty.call(data, "stack")) {
                 //assume error object
                 data = JSON.stringify(["err", data.name, data.message, data.stack]);
             }
@@ -56,7 +56,7 @@ function onAlarm(alarm) {
     Debug.log("warn", "alarm", ["unhandled alarm", alarm.name]);
 }
 function backgroundMessageHandler(message, sender) {
-    Debug.log("info", "bg-message", [message, sender]);
+    Debug.log("info", "bg-message", message);
     switch (message === null || message === void 0 ? void 0 : message.event) {
         case "get-status":
             return Promise.resolve(appStatus);
