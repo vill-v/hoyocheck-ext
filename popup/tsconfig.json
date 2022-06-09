@@ -3,7 +3,7 @@
         "target": "es2019",
 	},
 	"files": [
-		"background.ts",
-		"types.d.ts"
+		"popup.ts",
+		"../types.d.ts"
 	]
 }
